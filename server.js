@@ -7,6 +7,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 import { PORT, DB_URI, JWT_SECRET, CLIENT_ORIGIN, SALT_ROUNDS } from './config.js';
 const app = express();
+require('dotenv').config();
+
+
+
+mongoose.connect(DB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => console.log('Conectado a MongoDB Atlas'))
+    .catch(err => console.error('Error al conectar a MongoDB:', err));
+
 
 app.use(cors({
     origin: CLIENT_ORIGIN,           
@@ -425,13 +433,11 @@ app.post('/register', async (req, res) => {
 app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-
         // Buscar el usuario
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(400).json({ error: 'Usuario no encontrado' });
         }
-
         // Comparar la contraseña
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
@@ -439,7 +445,7 @@ app.post('/login', async (req, res) => {
         }
 
         // Crear un JWT
-        const token = jwt.sign({ id: user._id, role: user.role }, 'JWT_SECRET', { expiresIn: '1h' });
+        const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
 
         res.json({
             token,
