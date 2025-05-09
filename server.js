@@ -9,10 +9,12 @@ import { PORT, DB_URI, JWT_SECRET, CLIENT_ORIGIN, SALT_ROUNDS } from './config.j
 const app = express();
 
 app.use(cors({
-    origin: 'CLIENT_ORIGIN', // Permite solo este origen, puedes agregar más si es necesario
-    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Métodos permitidos
-    credentials: true, // Si necesitas enviar cookies o autenticación
+    origin: CLIENT_ORIGIN,           
+    methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+    allowedHeaders: ['Content-Type','Authorization'],
+    credentials: true
 }));
+
 app.use(express.json());
 
 // Conectar a MongoDB Atlas
