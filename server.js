@@ -7,7 +7,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 import { PORT, DB_URI, JWT_SECRET, CLIENT_ORIGIN, SALT_ROUNDS } from './config.js';
 const app = express();
-require('dotenv').config();
 
 
 
