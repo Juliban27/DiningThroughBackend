@@ -230,15 +230,25 @@ app.get('/bills', async (req, res) => {
 });
 
 // Ruta para agregar una nueva factura
+// POST /bills  ─ bill_id = (facturas existentes) + 1
 app.post('/bills', async (req, res) => {
-    try {
-        const bill = new Bill(req.body);
-        await bill.save();
-        res.status(201).json(bill);
-    } catch (error) {
-        res.status(500).json({ error: 'Error al guardar la factura' });
-    }
+  try {
+    // 1) ¿Cuántas facturas hay ahora?
+    const totalBills = await Bill.countDocuments();
+
+    // 2) Creamos la nueva factura con bill_id autoincremental
+    const newBill = await Bill.create({
+      ...req.body,
+      bill_id: (totalBills + 1).toString(),
+      date   : new Date(),
+    });
+
+    res.status(201).json(newBill);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al guardar la factura' });
+  }
 });
+
 
 // Ruta para obtener una factura por su ID
 app.get('/bills/:id', async (req, res) => {
