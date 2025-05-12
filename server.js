@@ -74,6 +74,8 @@ const Restaurant = mongoose.model('Restaurant', {
     hora_apertura: String,
     hora_cierre: String,
     image: String,
+    latitude: Number,
+    longitude: Number,
 })
 
 
