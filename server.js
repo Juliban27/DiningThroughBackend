@@ -6,9 +6,13 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 dotenv.config();
 import { PORT, DB_URI, JWT_SECRET, CLIENT_ORIGIN, SALT_ROUNDS } from './config.js';
+
 const app = express();
 
-
+const whitelist = [
+  process.env.CLIENT_ORIGIN,      // e.g. 'https://dining-through.vercel.app'
+  'http://localhost:5173'
+];
 
 mongoose.connect(DB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('Conectado a MongoDB Atlas'))
@@ -16,10 +20,14 @@ mongoose.connect(DB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 
 
 app.use(cors({
-    origin: CLIENT_ORIGIN || 'http://localhost:5173',           
-    methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-    allowedHeaders: ['Content-Type','Authorization'],
-    credentials: true
+  origin: (origin, cb) => {
+    // permite también peticiones sin origin (ej. Postman)
+    if (!origin || whitelist.includes(origin)) return cb(null, true);
+    cb(new Error('CORS no permitido'), false);
+  },
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
+  credentials: true
 }));
 
 app.use(express.json());
