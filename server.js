@@ -126,6 +126,24 @@ app.get('/products', async (req, res) => {
     }
 });
 
+//Ruta para patch los productos
+
+app.patch('/products/:id', async (req, res) => {
+  try {
+    const updates = req.body; // { stock: nuevoValor }
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+    if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
+    res.json(product);
+  } catch (error) {
+    console.error('Error al actualizar inventario:', error);
+    res.status(500).json({ error: 'Error al actualizar el inventario' });
+  }
+});
+
 // Ruta para agregar un nuevo producto
 app.post('/products', async (req, res) => {
     try {
