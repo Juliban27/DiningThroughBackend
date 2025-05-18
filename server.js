@@ -612,7 +612,7 @@ app.get('/ratings/:id', async (req, res) => {
 });
 
 // 4. Crear una nueva calificación
-app.post('/products/:id/ratings', verifyToken, async (req, res) => {
+app.post('/products/:id/ratings', async (req, res) => {
     try {
         const { user_id, score, comment } = req.body;
         const product_id = req.params.id;
