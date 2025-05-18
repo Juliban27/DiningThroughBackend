@@ -86,6 +86,14 @@ const Restaurant = mongoose.model('Restaurant', {
     longitude: Number,
 })
 
+const Rating = mongoose.model('Rating', {
+    product_id: String,
+    user_id: String,
+    score: Number,
+    comment: String,
+    date: Date,
+});
+
 
 // Ruta de prueba
 app.get('/', (req, res) => {
@@ -548,3 +556,189 @@ app.get(
         }
     }
 );
+
+// Endpoints para el sistema de calificaciones (Rating)
+
+// 1. Obtener todas las calificaciones
+app.get('/ratings', async (req, res) => {
+    try {
+        const ratings = await Rating.find();
+        res.json(ratings);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener las calificaciones' });
+    }
+});
+
+// 2. Obtener calificaciones por producto
+app.get('/products/:id/ratings', async (req, res) => {
+    try {
+        const productId = req.params.id;
+        const ratings = await Rating.find({ product_id: productId });
+        res.json(ratings);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener las calificaciones del producto' });
+    }
+});
+
+// 3. Obtener una calificación específica
+app.get('/ratings/:id', async (req, res) => {
+    try {
+        const ratingId = req.params.id;
+        const rating = await Rating.findById(ratingId);
+        
+        if (!rating) {
+            return res.status(404).json({ error: 'Calificación no encontrada' });
+        }
+        
+        res.json(rating);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener la calificación' });
+    }
+});
+
+// 4. Crear una nueva calificación
+app.post('/products/:id/ratings', verifyToken, async (req, res) => {
+    try {
+        const { user_id, score, comment } = req.body;
+        const product_id = req.params.id;
+        
+        // Validación básica
+        if (!user_id || !score || score < 1 || score > 5) {
+            return res.status(400).json({ error: 'Datos de calificación inválidos' });
+        }
+        
+        // Verificar si el usuario ya calificó este producto
+        const existingRating = await Rating.findOne({ product_id, user_id });
+        if (existingRating) {
+            return res.status(400).json({ error: 'El usuario ya ha calificado este producto' });
+        }
+        
+        const newRating = new Rating({
+            product_id,
+            user_id,
+            score,
+            comment,
+            date: new Date()
+        });
+        
+        await newRating.save();
+        
+        // Actualizar la calificación promedio en el producto
+        await updateProductAverageRating(product_id);
+        
+        res.status(201).json(newRating);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al crear la calificación' });
+    }
+});
+
+// 5. Actualizar una calificación existente
+app.put('/ratings/:id', verifyToken, async (req, res) => {
+    try {
+        const ratingId = req.params.id;
+        const { score, comment } = req.body;
+        
+        // Validación básica
+        if (score && (score < 1 || score > 5)) {
+            return res.status(400).json({ error: 'Puntuación inválida' });
+        }
+        
+        const rating = await Rating.findById(ratingId);
+        
+        if (!rating) {
+            return res.status(404).json({ error: 'Calificación no encontrada' });
+        }
+        
+        // Actualizar solo los campos proporcionados
+        if (score) rating.score = score;
+        if (comment !== undefined) rating.comment = comment;
+        rating.date = new Date(); // Actualizar fecha
+        
+        await rating.save();
+        
+        // Actualizar la calificación promedio en el producto
+        await updateProductAverageRating(rating.product_id);
+        
+        res.json(rating);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al actualizar la calificación' });
+    }
+});
+
+// 6. Eliminar una calificación
+app.delete('/ratings/:id', verifyToken, async (req, res) => {
+    try {
+        const ratingId = req.params.id;
+        const rating = await Rating.findById(ratingId);
+        
+        if (!rating) {
+            return res.status(404).json({ error: 'Calificación no encontrada' });
+        }
+        
+        const productId = rating.product_id;
+        
+        await Rating.findByIdAndDelete(ratingId);
+        
+        // Actualizar la calificación promedio en el producto
+        await updateProductAverageRating(productId);
+        
+        res.json({ message: 'Calificación eliminada correctamente' });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al eliminar la calificación' });
+    }
+});
+
+// 7. Obtener el promedio de calificaciones de un producto
+app.get('/products/:id/ratings/average', async (req, res) => {
+    try {
+        const productId = req.params.id;
+        const result = await Rating.aggregate([
+            { $match: { product_id: productId } },
+            { $group: {
+                _id: null,
+                averageScore: { $avg: "$score" },
+                totalRatings: { $sum: 1 }
+            }}
+        ]);
+        
+        if (result.length === 0) {
+            return res.json({ averageScore: 0, totalRatings: 0 });
+        }
+        
+        res.json({
+            averageScore: parseFloat(result[0].averageScore.toFixed(1)),
+            totalRatings: result[0].totalRatings
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al calcular el promedio de calificaciones' });
+    }
+});
+
+// Función auxiliar para actualizar la calificación promedio en el modelo de Producto
+async function updateProductAverageRating(productId) {
+    try {
+        const result = await Rating.aggregate([
+            { $match: { product_id: productId } },
+            { $group: {
+                _id: null,
+                averageScore: { $avg: "$score" },
+                totalRatings: { $sum: 1 }
+            }}
+        ]);
+        
+        let averageRating = 0;
+        let totalRatings = 0;
+        
+        if (result.length > 0) {
+            averageRating = result[0].averageScore;
+            totalRatings = result[0].totalRatings;
+        }
+        
+        // Actualizar el producto - Ten en cuenta que tu modelo Product tiene 'calification' en lugar de 'averageRating'
+        await Product.findByIdAndUpdate(productId, {
+            calification: parseFloat(averageRating.toFixed(1))
+        });
+    } catch (error) {
+        console.error('Error al actualizar la calificación promedio del producto:', error);
+    }
+}
