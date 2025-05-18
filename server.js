@@ -53,6 +53,7 @@ const Product = mongoose.model('Product', {
 const Order = mongoose.model('Order', {
     order_id: String,
     client_id: String,
+    bill_id: String,
     punto_venta: String,
     products: Array,
     state: String,
@@ -65,6 +66,7 @@ const Bill = mongoose.model('Bill', {
     products: Array,
     date: Date,
     total: Number,
+    state: String
 });
 
 const Restaurant = mongoose.model('Restaurant', {
@@ -89,6 +91,17 @@ app.get('/users', async (req, res) => {
         res.json(users);
     } catch (error) {
         res.status(500).json({ error: 'Error al obtener los usuarios' });
+    }
+});
+
+// Ruta para obtener un usuario por ID
+app.get('/users/:id', async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+        res.json(user);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener el usuario' });
     }
 });
 
@@ -216,6 +229,8 @@ app.delete('/orders/:id', async (req, res) => {
         res.status(500).json({ error: 'Error al eliminar el pedido' });
     }
 });
+
+
 
 ////////Bills////////////
 
